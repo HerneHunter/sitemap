@@ -1,0 +1,67 @@
+[
+  {
+    "desc": "slash separated date",
+    "input": "1403/06/15",
+    "expected": "2024-09-05T00:00:00+03:30"
+  },
+  {
+    "desc": "dash separated date",
+    "input": "1403-06-15",
+    "expected": "2024-09-05T00:00:00+03:30"
+  },
+  {
+    "desc": "date with time",
+    "input": "1403/06/15 10:30:45",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "date with T separator",
+    "input": "1403/06/15T10:30:45",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "date with time and plus offset",
+    "input": "1403/06/15 10:30:45+03:30",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "first month of year",
+    "input": "1402/01/01",
+    "expected": "2023-03-21T00:00:00+03:30"
+  },
+  {
+    "desc": "last month of year (Esfand)",
+    "input": "1402/12/29",
+    "expected": "2024-03-19T00:00:00+03:30"
+  },
+  {
+    "desc": "year 1400",
+    "input": "1400/05/05",
+    "expected": "2021-07-27T00:00:00+04:30"
+  },
+  {
+    "desc": "year 1399 (leap)",
+    "input": "1399/12/30",
+    "expected": "2021-03-20T00:00:00+03:30"
+  },
+  {
+    "desc": "midnight time",
+    "input": "1403/01/01 00:00:00",
+    "expected": "2024-03-20T00:00:00+03:30"
+  },
+  {
+    "desc": "end of day time",
+    "input": "1403/01/01 23:59:59",
+    "expected": "2024-03-20T23:59:59+03:30"
+  },
+  {
+    "desc": "incomplete shamsi - only year",
+    "input": "1403",
+    "expected": "2024-03-20T00:00:00+03:30"
+  },
+  {
+    "desc": "incomplete shamsi - year and month only",
+    "input": "1403/06",
+    "expected": "2024-08-22T00:00:00+03:30"
+  }
+]

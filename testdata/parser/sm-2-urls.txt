@@ -1,0 +1,6 @@
+https://example.net/post-1/
+https://example.net/post-2/
+https://example.net/post-3/
+https://example.net/post-4/
+https://example.net/post-5/
+https://example.net/post-6/

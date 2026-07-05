@@ -1,0 +1,147 @@
+[
+  {
+    "desc": "Persian yyyy/MM/dd",
+    "input": "۱۴۰۳/۰۶/۱۵",
+    "expected": "2024-09-05T00:00:00+03:30"
+  },
+  {
+    "desc": "Persian yyyy/MM/dd HH:mm:ss",
+    "input": "۱۴۰۳/۰۶/۱۵ ۱۰:۳۰:۴۵",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "Persian yyyy-MM-dd",
+    "input": "۱۴۰۳-۰۶-۱۵",
+    "expected": "2024-09-05T00:00:00+03:30"
+  },
+  {
+    "desc": "Persian yyyy-MM-dd HH:mm:ss",
+    "input": "۱۴۰۳-۰۶-۱۵ ۱۰:۳۰:۴۵",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "Persian ISO T format",
+    "input": "۱۴۰۳-۰۶-۱۵T۱۰:۳۰:۴۵",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "Arabic yyyy/MM/dd",
+    "input": "١٤٠٣/٠٦/١٥",
+    "expected": "2024-09-05T00:00:00+03:30"
+  },
+  {
+    "desc": "Arabic yyyy/MM/dd HH:mm:ss",
+    "input": "١٤٠٣/٠٦/١٥ ١٠:٣٠:٤٥",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "Arabic yyyy-MM-dd",
+    "input": "١٤٠٣-٠٦-١٥",
+    "expected": "2024-09-05T00:00:00+03:30"
+  },
+  {
+    "desc": "Arabic yyyy-MM-dd HH:mm:ss",
+    "input": "١٤٠٣-٠٦-١٥ ١٠:٣٠:٤٥",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "Arabic ISO T format",
+    "input": "١٤٠٣-٠٦-١٥T١٠:٣٠:٤٥",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "ASCII yyyy/MM/dd",
+    "input": "1403/06/15",
+    "expected": "2024-09-05T00:00:00+03:30"
+  },
+  {
+    "desc": "ASCII yyyy/MM/dd HH:mm:ss",
+    "input": "1403/06/15 10:30:45",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "ASCII yyyy-MM-dd",
+    "input": "1403-06-15",
+    "expected": "2024-09-05T00:00:00+03:30"
+  },
+  {
+    "desc": "ASCII yyyy-MM-dd HH:mm:ss",
+    "input": "1403-06-15 10:30:45",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "ASCII ISO T format",
+    "input": "1403-06-15T10:30:45",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "Mixed Persian + ASCII",
+    "input": "۱۴۰۳/06/۱۵",
+    "expected": "2024-09-05T00:00:00+03:30"
+  },
+  {
+    "desc": "Mixed Persian + ASCII with time",
+    "input": "۱۴۰۳/06/۱۵ 10:30:45",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "Mixed Arabic + ASCII",
+    "input": "١٤٠٣/06/١٥",
+    "expected": "2024-09-05T00:00:00+03:30"
+  },
+  {
+    "desc": "Mixed Arabic + ASCII with time",
+    "input": "١٤٠٣/06/١٥ 10:30:45",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "ASCII without leading zeros",
+    "input": "1403/6/5",
+    "expected": "2024-08-26T00:00:00+03:30"
+  },
+  {
+    "desc": "Persian without leading zeros",
+    "input": "۱۴۰۳/۶/۵",
+    "expected": "2024-08-26T00:00:00+03:30"
+  },
+  {
+    "desc": "Arabic without leading zeros",
+    "input": "١٤٠٣/٦/٥",
+    "expected": "2024-08-26T00:00:00+03:30"
+  },
+  {
+    "desc": "ASCII datetime without seconds",
+    "input": "1403-06-15 10:30",
+    "expected": "2024-09-05T10:30:00+03:30"
+  },
+  {
+    "desc": "Persian datetime without seconds",
+    "input": "۱۴۰۳-۰۶-۱۵ ۱۰:۳۰",
+    "expected": "2024-09-05T10:30:00+03:30"
+  },
+  {
+    "desc": "Arabic datetime without seconds",
+    "input": "١٤٠٣-٠٦-١٥ ١٠:٣٠",
+    "expected": "2024-09-05T10:30:00+03:30"
+  },
+  {
+    "desc": "extra spaces Persian",
+    "input": "۱۴۰۳/۰۶/۱۵   ۱۰:۳۰:۴۵",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "extra spaces ASCII",
+    "input": "1403/06/15   10:30:45",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "mixed digits without leading zeros",
+    "input": "۱۴۰۳/6/۵",
+    "expected": "2024-08-26T00:00:00+03:30"
+  },
+  {
+    "desc": "mixed digits datetime without seconds",
+    "input": "۱۴۰۳-06-۱۵ 10:30",
+    "expected": "2024-09-05T10:30:00+03:30"
+  }
+]

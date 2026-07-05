@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="https://example.com/wp-sitemap.xsl" ?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.com/post-1/</loc><lastmod>۱۳۹۰-۰۶-۳۱T13:35:26+03:30</lastmod></url><url><loc>https://example.com/post-2/</loc><lastmod>۱۴۰۰-۱۱-۲۱T22:03:30+03:30</lastmod></url><url><loc>https://example.com/post-3/</loc><lastmod>۱۳۹۷-۱۰-۲۰T22:57:21+03:30</lastmod></url><url><loc>https://example.com/post-4/</loc><lastmod>۱۴۰۴-۱۰-۰۳T11:04:36+03:30</lastmod></url><url><loc>https://example.com/post-5/</loc><lastmod>۱۴۰۱-۰۵-۰۹T08:06:49+04:30</lastmod></url></urlset>

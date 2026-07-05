@@ -1,0 +1,52 @@
+[
+  {
+    "desc": "RFC3339",
+    "input": "2024-09-05T10:30:45Z",
+    "expected": "2024-09-05T10:30:45Z"
+  },
+  {
+    "desc": "RFC3339 with offset",
+    "input": "2024-09-05T10:30:45+03:30",
+    "expected": "2024-09-05T10:30:45+03:30"
+  },
+  {
+    "desc": "date only ISO",
+    "input": "2024-09-05",
+    "expected": "2024-09-05T00:00:00Z"
+  },
+  {
+    "desc": "US format slash",
+    "input": "09/05/2024",
+    "expected": "2024-09-05T00:00:00Z"
+  },
+  {
+    "desc": "long month name",
+    "input": "September 5, 2024",
+    "expected": "2024-09-05T00:00:00Z"
+  },
+  {
+    "desc": "short month name",
+    "input": "05 Sep 2024",
+    "expected": "2024-09-05T00:00:00Z"
+  },
+  {
+    "desc": "RFC1123",
+    "input": "Thu, 05 Sep 2024 10:30:45 GMT",
+    "expected": "2024-09-05T10:30:45Z"
+  },
+  {
+    "desc": "datetime with space",
+    "input": "2024-09-05 10:30:45",
+    "expected": "2024-09-05T10:30:45Z"
+  },
+  {
+    "desc": "datetime with include 13",
+    "input": "2026-03-16T14:27:35Z",
+    "expected": "2026-03-16T14:27:35Z"
+  },
+  {
+    "desc": "incomplete gregorian - year and month only",
+    "input": "2006/06",
+    "expected": "2006-06-01T00:00:00Z"
+  }
+]

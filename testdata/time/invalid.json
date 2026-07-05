@@ -1,0 +1,17 @@
+[
+  {
+    "desc": "empty string",
+    "input": "",
+    "error": true
+  },
+  {
+    "desc": "random text",
+    "input": "not a date at all",
+    "error": true
+  },
+  {
+    "desc": "numbers only no separator",
+    "input": "99999",
+    "error": true
+  }
+]

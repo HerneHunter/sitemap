@@ -1,0 +1,5 @@
+https://example.com/post-1/
+https://example.com/post-2/
+https://example.com/post-3/
+https://example.com/post-4/
+https://example.com/post-5/
