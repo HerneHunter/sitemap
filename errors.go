@@ -6,7 +6,6 @@ import (
 )
 
 var (
-	ErrUndeterminedType = errors.New("could not determine document type")
 	ErrMalformedXML     = errors.New("malformed xml")
 )
 
