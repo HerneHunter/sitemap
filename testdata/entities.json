@@ -1,0 +1,23 @@
+[
+  { "id": 1, "group": "Named Entities", "input": "&amp;", "expected": "&" },
+  { "id": 2, "group": "Named Entities", "input": "&lt;", "expected": "<" },
+  { "id": 3, "group": "Named Entities", "input": "&gt;", "expected": ">" },
+  { "id": 4, "group": "Named Entities", "input": "&quot;", "expected": "\"" },
+  { "id": 5, "group": "Named Entities", "input": "&apos;", "expected": "'" },
+  { "id": 6, "group": "Numeric Decimal References", "input": "&#65;", "expected": "A" },
+  { "id": 7, "group": "Numeric Decimal References", "input": "&#9786;", "expected": "☺" },
+  { "id": 8, "group": "Numeric Decimal References", "input": "&#0;", "expected": "\u0000" },
+  { "id": 9, "group": "Numeric Decimal References", "input": "&#1114111;", "expected": "\udbff\udfff" },
+  { "id": 10, "group": "Numeric Hex References", "input": "&#x41;", "expected": "A" },
+  { "id": 11, "group": "Numeric Hex References", "input": "&#X41;", "expected": "A" },
+  { "id": 12, "group": "Numeric Hex References", "input": "&#x263A;", "expected": "☺" },
+  { "id": 13, "group": "Numeric Hex References", "input": "&#x10FFFF;", "expected": "\udbff\udfff" },
+  { "id": 14, "group": "Malformed Edge Cases", "input": "&unknown;", "expected": "&unknown;" },
+  { "id": 15, "group": "Malformed Edge Cases", "input": "&#xDEFG;", "expected": "&#xDEFG;" },
+  { "id": 16, "group": "Malformed Edge Cases", "input": "&#999999999;", "expected": "&#999999999;" },
+  { "id": 17, "group": "Malformed Edge Cases", "input": "&#-1;", "expected": "&#-1;" },
+  { "id": 18, "group": "Malformed Edge Cases", "input": "&", "expected": "&" },
+  { "id": 19, "group": "Malformed Edge Cases", "input": "&abc", "expected": "&abc" },
+  { "id": 20, "group": "Malformed Edge Cases", "input": "&lt<", "expected": "&lt" },
+  { "id": 21, "group": "Malformed Edge Cases", "input": "&abcdefghijklmnopq;", "expected": "&abcdefghijklmnopq;" }
+]

@@ -1,0 +1,6 @@
+[
+  {
+    "Loc": "",
+    "Err": "open testdata/sitemap/does-not-exist.xml: The system cannot find the file specified."
+  }
+]

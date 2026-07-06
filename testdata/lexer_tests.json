@@ -1,0 +1,66 @@
+[
+  { "id": 1, "group": "fill / peek / Buffer Boundary", "method": "peek", "chunks": ["[32KB_A]B"], "expected_ok": true, "expected_dst": "A", "expected_rest": "[32KB_A]B" },
+  { "id": 2, "group": "fill / peek / Buffer Boundary", "method": "readAll", "chunks": ["a", "b", "c"], "expected_ok": true, "expected_dst": "abc" },
+  { "id": 3, "group": "fill / peek / Buffer Boundary", "method": "readAll", "chunks": ["a", "", "b"], "expected_ok": true, "expected_dst": "ab" },
+  { "id": 4, "group": "fill / peek / Buffer Boundary", "method": "peek", "chunks": [], "expected_ok": false },
+  { "id": 5, "group": "fill / peek / Buffer Boundary", "method": "readAll", "chunks": ["abc"], "eof_err": true, "expected_ok": true, "expected_dst": "abc" },
+
+  { "id": 6, "group": "skipUntil", "method": "skipUntil", "arg_string": "<", "chunks": ["<hello"], "expected_ok": true, "expected_rest": "<hello" },
+  { "id": 7, "group": "skipUntil", "method": "skipUntil", "arg_string": "<", "chunks": ["hello<world"], "expected_ok": true, "expected_rest": "<world" },
+  { "id": 8, "group": "skipUntil", "method": "skipUntil", "arg_string": "<", "chunks": ["hel", "lo<", "world"], "expected_ok": true, "expected_rest": "<world" },
+  { "id": 9, "group": "skipUntil", "method": "skipUntil", "arg_string": "<", "chunks": ["hello"], "expected_ok": false, "expected_rest": "" },
+
+  { "id": 10, "group": "appendUntil", "method": "appendUntil", "arg_string": "<", "chunks": ["hello<world"], "expected_ok": true, "expected_dst": "hello", "expected_rest": "<world" },
+  { "id": 11, "group": "appendUntil", "method": "appendUntil", "arg_string": "<", "chunks": ["hel", "lo<world"], "expected_ok": true, "expected_dst": "hello", "expected_rest": "<world" },
+  { "id": 12, "group": "appendUntil", "method": "appendUntil", "arg_string": "<", "chunks": ["hello"], "expected_ok": false, "expected_dst": "hello", "expected_rest": "" },
+
+  { "id": 13, "group": "appendUntilLower", "method": "appendUntilLower", "chunks": ["WEEKLY<"], "expected_ok": true, "expected_dst": "weekly", "expected_rest": "<" },
+  { "id": 14, "group": "appendUntilLower", "method": "appendUntilLower", "chunks": ["Daily<"], "expected_ok": true, "expected_dst": "daily", "expected_rest": "<" },
+  { "id": 15, "group": "appendUntilLower", "method": "appendUntilLower", "chunks": ["A1-B<"], "expected_ok": true, "expected_dst": "a1-b", "expected_rest": "<" },
+  { "id": 16, "group": "appendUntilLower", "method": "appendUntilLower", "chunks": ["hello<world"], "expected_ok": true, "expected_dst": "hello", "expected_rest": "<world" },
+
+  { "id": 17, "group": "appendUntilUnescape", "method": "appendUntilUnescape", "chunks": ["http://a.com<"], "expected_ok": true, "expected_dst": "http://a.com", "expected_rest": "<" },
+  { "id": 18, "group": "appendUntilUnescape", "method": "appendUntilUnescape", "chunks": ["http://a.com?x=1&amp;y=2<"], "expected_ok": true, "expected_dst": "http://a.com?x=1&y=2", "expected_rest": "<" },
+  { "id": 19, "group": "appendUntilUnescape", "method": "appendUntilUnescape", "chunks": ["&lt;&gt;<"], "expected_ok": true, "expected_dst": "<>", "expected_rest": "<" },
+  { "id": 20, "group": "appendUntilUnescape", "method": "appendUntilUnescape", "chunks": ["&am", "p;<"], "expected_ok": true, "expected_dst": "&", "expected_rest": "<" },
+  { "id": 21, "group": "appendUntilUnescape", "method": "appendUntilUnescape", "chunks": ["<"], "expected_ok": true, "expected_dst": "", "expected_rest": "<" },
+
+  { "id": 22, "group": "skipUntilSeq / appendUntilSeq", "method": "skipUntilSeq", "arg_string": "?>", "chunks": ["xml version?>rest"], "expected_ok": true, "expected_rest": "rest" },
+  { "id": 23, "group": "skipUntilSeq / appendUntilSeq", "method": "skipUntilSeq", "arg_string": "-->", "chunks": ["comment-->rest"], "expected_ok": true, "expected_rest": "rest" },
+  { "id": 24, "group": "skipUntilSeq / appendUntilSeq", "method": "appendUntilSeq", "arg_string": "]]>", "chunks": ["CDATA content]]>rest"], "expected_ok": true, "expected_dst": "CDATA content", "expected_rest": "rest" },
+  { "id": 25, "group": "skipUntilSeq / appendUntilSeq", "method": "appendUntilSeq", "arg_string": "]]>", "chunks": ["partial ]> match]]>rest"], "expected_ok": true, "expected_dst": "partial ]> match", "expected_rest": "rest" },
+  { "id": 26, "group": "skipUntilSeq / appendUntilSeq", "method": "appendUntilSeq", "arg_string": "]]>", "chunks": ["cross chunk]", "]>rest"], "expected_ok": true, "expected_dst": "cross chunk", "expected_rest": "rest" },
+  { "id": 27, "group": "skipUntilSeq / appendUntilSeq", "method": "appendUntilSeqLower", "arg_string": "]]>", "chunks": ["UPPER]]>rest"], "expected_ok": true, "expected_dst": "upper", "expected_rest": "rest" },
+  { "id": 28, "group": "skipUntilSeq / appendUntilSeq", "method": "skipUntilSeq", "arg_string": "?>", "chunks": ["no terminator"], "expected_ok": false, "expected_rest": "" },
+
+  { "id": 29, "group": "skipN", "method": "skipN", "arg_int": 0, "chunks": ["hello"], "expected_ok": true, "expected_rest": "hello" },
+  { "id": 30, "group": "skipN", "method": "skipN", "arg_int": 3, "chunks": ["hello"], "expected_ok": true, "expected_rest": "lo" },
+  { "id": 31, "group": "skipN", "method": "skipN", "arg_int": 5, "chunks": ["he", "ll", "o", "world"], "expected_ok": true, "expected_rest": "world" },
+  { "id": 32, "group": "skipN", "method": "skipN", "arg_int": 10, "chunks": ["hello"], "expected_ok": false, "expected_rest": "" },
+
+  { "id": 33, "group": "skipDoctype", "method": "skipDoctype", "chunks": [" urlset>rest"], "expected_ok": true, "expected_rest": "rest" },
+  { "id": 34, "group": "skipDoctype", "method": "skipDoctype", "chunks": [" x [ <!ELEMENT foo> ]>rest"], "expected_ok": true, "expected_rest": "rest" },
+  { "id": 35, "group": "skipDoctype", "method": "skipDoctype", "chunks": [" x [ [[]] ]>rest"], "expected_ok": true, "expected_rest": "rest" },
+  { "id": 36, "group": "skipDoctype", "method": "skipDoctype", "chunks": [" no terminator"], "expected_ok": false, "expected_rest": "" },
+
+  { "id": 37, "group": "skipAttrs", "method": "skipAttrs", "chunks": [">rest"], "expected_ok": true, "expected_sc": false, "expected_rest": "rest" },
+  { "id": 38, "group": "skipAttrs", "method": "skipAttrs", "chunks": ["/>rest"], "expected_ok": true, "expected_sc": true, "expected_rest": "rest" },
+  { "id": 39, "group": "skipAttrs", "method": "skipAttrs", "chunks": [" xmlns=\"foo\">rest"], "expected_ok": true, "expected_sc": false, "expected_rest": "rest" },
+  { "id": 40, "group": "skipAttrs", "method": "skipAttrs", "chunks": [" attr='>'>rest"], "expected_ok": true, "expected_sc": false, "expected_rest": "rest" },
+  { "id": 41, "group": "skipAttrs", "method": "skipAttrs", "chunks": [" val=\">\"/>rest"], "expected_ok": true, "expected_sc": true, "expected_rest": "rest" },
+  { "id": 42, "group": "skipAttrs", "method": "skipAttrs", "chunks": [" attr=\"eof"], "expected_ok": false, "expected_rest": "" },
+
+  { "id": 43, "group": "localName", "method": "localName", "arg_string": "sm:loc", "expected_ok": true, "expected_dst": "loc" },
+  { "id": 44, "group": "localName", "method": "localName", "arg_string": "loc", "expected_ok": true, "expected_dst": "loc" },
+  { "id": 45, "group": "localName", "method": "localName", "arg_string": "a:b:c", "expected_ok": true, "expected_dst": "b:c" },
+  { "id": 46, "group": "localName", "method": "localName", "arg_string": ":loc", "expected_ok": true, "expected_dst": "loc" },
+
+  { "id": 47, "group": "nextEvent", "method": "nextEvent", "chunks": ["<?xml version=\"1.0\"?><url>rest"], "expected_ok": true, "expected_end": false, "expected_sc": false, "expected_name": "url", "expected_rest": "rest" },
+  { "id": 48, "group": "nextEvent", "method": "nextEvent", "chunks": ["<!-- comment --></url>rest"], "expected_ok": true, "expected_end": true, "expected_rest": "rest" },
+  { "id": 49, "group": "nextEvent", "method": "nextEvent", "chunks": ["<![CDATA[text]]><loc>rest"], "expected_ok": true, "expected_dst": "text", "expected_name": "loc", "expected_rest": "rest" },
+  { "id": 50, "group": "nextEvent", "method": "nextEvent", "chunks": ["</url>rest"], "expected_ok": true, "expected_end": true, "expected_rest": "rest" },
+  { "id": 51, "group": "nextEvent", "method": "nextEvent", "chunks": ["<url/>rest"], "expected_ok": true, "expected_sc": true, "expected_name": "url", "expected_rest": "rest" },
+  { "id": 52, "group": "nextEvent", "method": "nextEvent", "chunks": ["<url"], "expected_ok": false, "expected_trunc": true },
+  { "id": 53, "group": "nextEvent", "method": "nextEvent", "chunks": ["<"], "expected_ok": false, "expected_trunc": true },
+  { "id": 54, "group": "nextEvent", "method": "nextEvent", "chunks": ["just text"], "expected_ok": false, "expected_trunc": false, "expected_dst": "just text" }
+]

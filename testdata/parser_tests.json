@@ -1,0 +1,47 @@
+[
+  { "id": 1, "group": "processEntry", "method": "processEntry", "desc": "self-closing <url/>", "input": "", "self_close": true, "flags": ["lastMod", "changeFreq", "priority"], "expected_ok": true, "expected_loc": "" },
+  { "id": 2, "group": "processEntry", "method": "processEntry", "desc": "only loc", "input": "<loc>http://x</loc></url>", "flags": ["lastMod", "changeFreq", "priority"], "expected_ok": true, "expected_loc": "http://x" },
+  { "id": 3, "group": "processEntry", "method": "processEntry", "desc": "all 4 fields", "input": "<loc>x</loc><lastmod>y</lastmod><changefreq>z</changefreq><priority>1</priority></url>", "flags": ["lastMod", "changeFreq", "priority"], "expected_ok": true, "expected_loc": "x", "expected_mod": "y", "expected_freq": "z", "expected_pri": "1" },
+  { "id": 4, "group": "processEntry", "method": "processEntry", "desc": "duplicate field", "input": "<loc>x</loc><loc>y</loc></url>", "flags": ["lastMod", "changeFreq", "priority"], "expected_ok": true, "expected_loc": "xy" },
+  { "id": 5, "group": "processEntry", "method": "processEntry", "desc": "depth > 1", "input": "<loc><a>ignored</a>x</loc></url>", "flags": ["lastMod", "changeFreq", "priority"], "expected_ok": true, "expected_loc": "" },
+  { "id": 6, "group": "processEntry", "method": "processEntry", "desc": "EOF before </url>", "input": "<loc>x</loc>", "flags": ["lastMod", "changeFreq", "priority"], "expected_ok": false, "expected_loc": "x" },
+  { "id": 7, "group": "processEntry", "method": "processEntry", "desc": "field not in flags", "input": "<loc>x</loc><lastmod>y</lastmod></url>", "flags": [], "expected_ok": true, "expected_loc": "x", "expected_mod": "" },
+
+  { "id": 8, "group": "parse_url", "method": "parse", "desc": "empty urlset", "input": "<urlset></urlset>", "expected_results": [] },
+  { "id": 9, "group": "parse_url", "method": "parse", "desc": "one <url> with loc", "input": "<urlset><url><loc>x</loc></url></urlset>", "expected_results": [{ "Loc": "x", "Priority": -1 }] },
+  { "id": 10, "group": "parse_url", "method": "parse", "desc": "multiple <url>", "input": "<urlset><url><loc>x</loc></url><url><loc>y</loc></url></urlset>", "expected_results": [{ "Loc": "x", "Priority": -1 }, { "Loc": "y", "Priority": -1 }] },
+  { "id": 11, "group": "parse_url", "method": "parse", "desc": "unknown tags ignored", "input": "<urlset><foo>bar</foo><url><loc>x</loc></url></urlset>", "expected_results": [{ "Loc": "x", "Priority": -1 }] },
+  { "id": 12, "group": "parse_url", "method": "parse", "desc": "<url/> self-closing", "input": "<urlset><url/></urlset>", "expected_results": [{ "Loc": "", "Priority": -1 }] },
+  { "id": 13, "group": "parse_url", "method": "parse", "desc": "Priority = 0.5", "input": "<urlset><url><priority>0.5</priority></url></urlset>", "flags": ["priority"], "expected_results": [{ "Loc": "", "Priority": 0.5 }] },
+  { "id": 14, "group": "parse_url", "method": "parse", "desc": "Priority invalid", "input": "<urlset><url><priority>abc</priority></url></urlset>", "flags": ["priority"], "expected_results": [{ "Loc": "", "Priority": -1 }] },
+  { "id": 15, "group": "parse_url", "method": "parse", "desc": "ChangeFreq uppercase", "input": "<urlset><url><changefreq>WEEKLY</changefreq></url></urlset>", "flags": ["changeFreq"], "expected_results": [{ "Loc": "", "ChangeFreq": "weekly", "Priority": -1 }] },
+  { "id": 16, "group": "parse_url", "method": "parse", "desc": "LastMod valid", "input": "<urlset><url><lastmod>2026-03-16T23:31:00Z</lastmod></url></urlset>", "flags": ["lastMod"], "expected_results": [{ "Loc": "", "LastMod": "2026-03-16T23:31:00Z", "Priority": -1 }] },
+  { "id": 17, "group": "parse_url", "method": "parse", "desc": "LastMod invalid", "input": "<urlset><url><lastmod>invalid time</lastmod></url></urlset>", "flags": ["lastMod"], "expected_results": [{ "Loc": "", "LastMod": "0001-01-01T00:00:00Z", "Priority": -1 }] },
+  { "id": 18, "group": "parse_url", "method": "parse", "desc": "no flags", "input": "<urlset><url><loc>x</loc><lastmod>y</lastmod></url></urlset>", "flags": [], "expected_results": [{ "Loc": "x", "Priority": -1 }] },
+  { "id": 19, "group": "parse_url", "method": "parse", "desc": "loc with entity", "input": "<urlset><url><loc>&amp;</loc></url></urlset>", "expected_results": [{ "Loc": "&", "Priority": -1 }] },
+  { "id": 20, "group": "parse_url", "method": "parse", "desc": "loc with CDATA", "input": "<urlset><url><loc><![CDATA[&amp;]]></loc></url></urlset>", "expected_results": [{ "Loc": "&amp;", "Priority": -1 }] },
+
+
+
+  { "id": 24, "group": "detection", "method": "parse", "desc": "unknown root before urlset", "input": "<foo></foo><urlset><url><loc>x</loc></url></urlset>", "expected_results": [{ "Loc": "x", "Priority": -1 }] },
+  { "id": 25, "group": "detection", "method": "parse", "desc": "PI and comment before root", "input": "<?xml version=\"1.0\"?><!-- comment --><urlset><url><loc>x</loc></url></urlset>", "expected_results": [{ "Loc": "x", "Priority": -1 }] },
+  { "id": 26, "group": "detection", "method": "parse", "desc": "DOCTYPE skip", "input": "<!DOCTYPE urlset><urlset><url><loc>x</loc></url></urlset>", "expected_results": [{ "Loc": "x", "Priority": -1 }] },
+  { "id": 27, "group": "detection", "method": "parse", "desc": "namespace prefix", "input": "<sm:urlset><sm:url><sm:loc>x</sm:loc></sm:url></sm:urlset>", "expected_results": [{ "Loc": "x", "Priority": -1 }] },
+
+  { "id": 28, "group": "errors", "method": "parse", "desc": "truncated XML", "input": "<urlset><url>", "expected_results": [{ "Err": "malformed xml" }] },
+  { "id": 29, "group": "errors", "method": "parse", "desc": "completely empty", "input": "", "expected_results": [] },
+  { "id": 30, "group": "errors", "method": "parse", "desc": "only whitespace", "input": "   \n \t ", "expected_results": [] },
+  { "id": 31, "group": "errors", "method": "parse", "desc": "truncated <", "input": "<", "expected_results": [{ "Err": "malformed xml" }] },
+
+  { "id": 32, "group": "context", "method": "parse", "desc": "cancel before first entry", "input": "<urlset><url><loc>x</loc></url></urlset>", "cancel_at": 0, "expected_results": [{ "Err": "context canceled" }] },
+  { "id": 33, "group": "context", "method": "parse", "desc": "cancel after first entry", "input": "<urlset><url><loc>1</loc></url><url><loc>2</loc></url></urlset>", "cancel_at": 1, "expected_results": [{ "Loc": "1", "Priority": -1 }, { "Err": "context canceled" }] },
+  { "id": 34, "group": "context", "method": "parse", "desc": "cancel and return false from yield", "input": "<urlset><url><loc>1</loc></url><url><loc>2</loc></url></urlset>", "cancel_at": 1, "yield_stop_at": 1, "expected_results": [{ "Loc": "1", "Priority": -1 }] },
+
+  { "id": 35, "group": "early_stop", "method": "parse", "desc": "yield returns false early", "input": "<urlset><url><loc>1</loc></url><url><loc>2</loc></url></urlset>", "yield_stop_at": 1, "expected_results": [{ "Loc": "1", "Priority": -1 }] },
+
+  { "id": 36, "group": "table_driven", "method": "parse_file", "desc": "sm-1.xml", "input_file": "testdata/sitemap/sm-1.xml", "expected_file": "testdata/sitemap/sm-1.json", "flags": ["lastMod"] },
+  { "id": 37, "group": "table_driven", "method": "parse_file", "desc": "sm-2.xml", "input_file": "testdata/sitemap/sm-2.xml", "expected_file": "testdata/sitemap/sm-2.json", "flags": ["lastMod", "changeFreq", "priority"] },
+  { "id": 38, "group": "table_driven", "method": "parse_file", "desc": "smi-1.xml", "input_file": "testdata/sitemap/smi-1.xml", "expected_file": "testdata/sitemap/smi-1.json", "flags": ["lastMod", "changeFreq", "priority"], "expected_kind_index": true },
+  { "id": 39, "group": "table_driven", "method": "parse_file", "desc": "smi-missing.xml", "input_file": "testdata/sitemap/smi-missing.xml", "expected_file": "testdata/sitemap/smi-missing.json", "flags": [], "expected_kind_index": true },
+  { "id": 40, "group": "table_driven", "method": "parse_file", "desc": "smi-mixed.xml", "input_file": "testdata/sitemap/smi-mixed.xml", "expected_file": "testdata/sitemap/smi-mixed.json", "flags": ["lastMod"], "expected_kind_index": true }
+]

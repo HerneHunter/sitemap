@@ -1,0 +1,16 @@
+[
+  {
+    "Loc": "testdata/sitemap/sm-1.xml",
+    "LastMod": "2026-03-16T23:31:00Z",
+    "ChangeFreq": "",
+    "Priority": -1,
+    "Err": null
+  },
+  {
+    "Loc": "testdata/sitemap/sm-2.xml",
+    "LastMod": "2026-03-16T23:31:00Z",
+    "ChangeFreq": "",
+    "Priority": -1,
+    "Err": null
+  }
+]

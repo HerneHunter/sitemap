@@ -1,0 +1,44 @@
+[
+  {
+    "Loc": "https://example.net/post-1/",
+    "LastMod": "2026-06-30T21:09:37+03:30",
+    "ChangeFreq": "daily",
+    "Priority": 1.0,
+    "Err": null
+  },
+  {
+    "Loc": "https://example.net/post-2/",
+    "LastMod": "2026-06-30T21:09:37+03:30",
+    "ChangeFreq": "weekly",
+    "Priority": 0.8,
+    "Err": null
+  },
+  {
+    "Loc": "https://example.net/post-3/",
+    "LastMod": "2026-06-30T18:59:40+03:30",
+    "ChangeFreq": "weekly",
+    "Priority": 0.8,
+    "Err": null
+  },
+  {
+    "Loc": "https://example.net/post-4/",
+    "LastMod": "2026-06-30T18:56:40+03:30",
+    "ChangeFreq": "weekly",
+    "Priority": 0.8,
+    "Err": null
+  },
+  {
+    "Loc": "https://example.net/post-5/",
+    "LastMod": "2026-06-30T16:43:10+03:30",
+    "ChangeFreq": "weekly",
+    "Priority": 0.8,
+    "Err": null
+  },
+  {
+    "Loc": "https://example.net/post-6/",
+    "LastMod": "2026-06-30T16:41:23+03:30",
+    "ChangeFreq": "weekly",
+    "Priority": 0.8,
+    "Err": null
+  }
+]
