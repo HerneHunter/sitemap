@@ -15,9 +15,10 @@ const (
 	ChangeFreqNever   ChangeFreq = "never"
 )
 
-// ParseResult carries a parsed URL entry or an error.
-// Loc is always populated. Every other field is populated only if its
-// matching With* option was passed in, and stays zero (or -1 for Priority) otherwise.
+// ParseResult represents a parsed sitemap entry or an error.
+// Loc is always populated. Other fields are only populated if their
+// corresponding With* option was provided; otherwise they remain zero-valued
+// (or -1 for Priority).
 type ParseResult struct {
 	Loc        string
 	LastMod    time.Time

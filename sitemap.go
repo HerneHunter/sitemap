@@ -117,6 +117,11 @@ func ParseFile(ctx context.Context, filepath string, opts ...Option) <-chan Pars
 		close(out)
 		return out
 	}
+	// Ensure the file is closed even if the goroutine inside Parse never
+	// reaches consumeReader (e.g. context already cancelled at call site).
+	// closeIfCloser inside consumeReader handles the normal path; this defer
+	// is a safety net for the abnormal path. Double-close on *os.File is safe.
+	defer f.Close()
 	return Parse(ctx, f, opts...)
 }
 
@@ -144,14 +149,12 @@ func FetchAll(ctx context.Context, urls []string, opts ...Option) <-chan ParseRe
 	return out
 }
 
-// closeIfCloser closes r if it implements io.ReadCloser.
 func closeIfCloser(r io.Reader) {
 	if rc, ok := r.(io.ReadCloser); ok {
 		rc.Close()
 	}
 }
 
-// openLoc opens loc as an HTTP response or local file.
 func openLoc(ctx context.Context, client *http.Client, loc string) (io.Reader, error) {
 	if strings.HasPrefix(loc, "http://") || strings.HasPrefix(loc, "https://") {
 		return fetchUrl(ctx, client, loc)
@@ -159,7 +162,6 @@ func openLoc(ctx context.Context, client *http.Client, loc string) (io.Reader, e
 	return os.Open(loc)
 }
 
-// scheduleFetch launches a context-aware goroutine with a semaphore slot for fetchRecursive.
 func scheduleFetch(ctx context.Context, loc string, o options, out chan<- ParseResult, wg *sync.WaitGroup, sem chan struct{}) {
 	wg.Go(func() {
 		select {
@@ -172,7 +174,6 @@ func scheduleFetch(ctx context.Context, loc string, o options, out chan<- ParseR
 	})
 }
 
-// fetchRecursive resolves and parses loc, recursing into child sitemaps if it's an index.
 func fetchRecursive(ctx context.Context, loc string, o options, out chan<- ParseResult, wg *sync.WaitGroup, sem chan struct{}) {
 	reader, err := openLoc(ctx, o.httpClient, loc)
 	if err != nil {
@@ -182,7 +183,6 @@ func fetchRecursive(ctx context.Context, loc string, o options, out chan<- Parse
 	consumeReader(ctx, reader, o, out, wg, sem)
 }
 
-// consumeReader parses reader and forwards entries, recursing into child sitemaps.
 func consumeReader(ctx context.Context, reader io.Reader, o options, out chan<- ParseResult, wg *sync.WaitGroup, sem chan struct{}) {
 	defer closeIfCloser(reader)
 
@@ -206,7 +206,6 @@ func consumeReader(ctx context.Context, reader io.Reader, o options, out chan<- 
 	})
 }
 
-// shouldSkip reports if an entry predates since. Entries without lastmod are kept.
 func shouldSkip(lastMod time.Time, since time.Time) bool {
 	return !lastMod.IsZero() && lastMod.Before(since)
 }

@@ -9,11 +9,10 @@ import (
 	"time"
 )
 
-// testCase mirrors the JSON structure in testdata/time/*.json
 type testCase struct {
 	Desc     string `json:"desc"`
 	Input    string `json:"input"`
-	Expected string `json:"expected"` // RFC3339; empty when Error is true
+	Expected string `json:"expected"` // RFC3339 (empty if Error is true)
 	Error    bool   `json:"error"`
 }
 
@@ -30,9 +29,8 @@ func loadCases(t *testing.T, filename string) []testCase {
 	return cases
 }
 
-// assertTime checks that got matches the RFC3339 expected string.
-// For Shamsi results the timezone offset is part of the expected value,
-// so we compare Unix timestamps to avoid location-name mismatches.
+// assertTime compares Unix timestamps instead of calling Equal() to avoid
+// location-name mismatches, since Shamsi timezone offsets are baked into the expected string.
 func assertTime(t *testing.T, desc, expected string, got time.Time) {
 	t.Helper()
 	want, err := time.Parse(time.RFC3339, expected)
@@ -75,7 +73,7 @@ func TestParseTime_GregorianValid(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			// Only compare date part for formats that lose time info
+			// Date-only formats drop time information.
 			want, _ := time.Parse(time.RFC3339, tc.Expected)
 			if got.Year() != want.Year() || got.Month() != want.Month() || got.Day() != want.Day() {
 				t.Errorf("[%s] date mismatch: got %s, want %s",

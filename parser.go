@@ -2,35 +2,55 @@ package sitemap
 
 import (
 	"context"
-	"encoding/xml"
 	"io"
 	"strconv"
 )
 
+// Caller must have already consumed the opening tag.
+func processEntry(lx *xmlLexer, flags parseFlags, selfClose bool, locBuf, lastModBuf, changeFreqBuf, priorityBuf *[]byte) bool {
+	if selfClose {
+		return true
+	}
 
-// parseFlags indicates which well-known built-in tags to extract.
-// Built-ins are handled directly (no closures) to keep Entry on the stack.
-type parseFlags struct {
-	lastMod    bool
-	changeFreq bool
-	priority   bool
+	depth := 0
+	curField := fieldNone
+
+	for {
+		dst, mode := selectDst(curField, locBuf, lastModBuf, changeFreqBuf, priorityBuf)
+		isEnd, sc, ok := lx.nextEvent(dst, mode)
+		if !ok {
+			return false
+		}
+		if isEnd {
+			if depth == 0 {
+				return true
+			}
+			depth--
+			curField = fieldNone
+			continue
+		}
+
+		depth++
+		if depth == 1 {
+			curField = matchField(localName(lx.nameBuf), flags)
+		} else {
+			curField = fieldNone
+		}
+		if sc {
+			// Self-closing tag: treat as an immediate matching end tag.
+			depth--
+			curField = fieldNone
+		}
+	}
 }
 
-// parse reads XML and calls yield for each result.
-// kindOut is written to true before the first yield when the document is a sitemap index;
-// built-in fields are handled via flags with no closures — result stays on the stack.
+// kindOut is set to true before the first yield if the document is a sitemap index.
+// Built-in fields are handled via flags to keep ParseResult on the stack.
+//
+// This is a hand-rolled streaming byte-level parser: it does not use encoding/xml,
+// reads in fixed-size chunks, and reuses buffers across entries.
 func parse(ctx context.Context, reader io.Reader, flags parseFlags, kindOut *bool, yield func(ParseResult) bool) {
-	decoder := xml.NewDecoder(reader)
-	detected := false
-	var isIndex bool
-
-	const (
-		fieldNone       = -1
-		fieldLoc        = 0
-		fieldLastMod    = 1
-		fieldChangeFreq = 2
-		fieldPriority   = 3
-	)
+	lx := newXMLLexer(reader)
 
 	locBuf := make([]byte, 0, 2048)
 	var lastModBuf, changeFreqBuf, priorityBuf []byte
@@ -44,137 +64,85 @@ func parse(ctx context.Context, reader io.Reader, flags parseFlags, kindOut *boo
 		priorityBuf = make([]byte, 0, 16)
 	}
 
+	detected := false
+	isIndex := false
+
 	for {
-		token, err := decoder.RawToken()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			if !yield(ParseResult{Err: ErrMalformedXML}) {
-				return
+		isEnd, selfClose, ok := lx.nextEvent(nil, capNone)
+		if !ok {
+			if lx.truncated {
+				yield(ParseResult{Err: ErrMalformedXML})
 			}
 			return
 		}
-
-		startElement, ok := token.(xml.StartElement)
-		if !ok {
+		if isEnd {
 			continue
 		}
 
-		local := startElement.Name.Local
+		name := string(localName(lx.nameBuf))
 		if !detected {
-			switch local {
-			case "sitemap", "sm:sitemap", "sitemapindex":
+			switch name {
+			case "sitemap", "sitemapindex":
 				isIndex = true
 				*kindOut = true
 				detected = true
-			case "url", "sm:url", "urlset":
+			case "url", "urlset":
 				detected = true
 			default:
 				continue
 			}
+			// Skip wrapper/root tags
+			continue
 		}
-		if (isIndex && (local == "sitemap" || local == "sm:sitemap")) ||
-			(!isIndex && (local == "url" || local == "sm:url")) {
 
-			select {
-			case <-ctx.Done():
-				yield(ParseResult{Err: ctx.Err()})
-				return
-			default:
-			}
+		matchedEntry := (isIndex && name == "sitemap") || (!isIndex && name == "url")
+		if !matchedEntry {
+			continue
+		}
 
-			locBuf = locBuf[:0]
-			if flags.lastMod {
-				lastModBuf = lastModBuf[:0]
-			}
-			if flags.changeFreq {
-				changeFreqBuf = changeFreqBuf[:0]
-			}
-			if flags.priority {
-				priorityBuf = priorityBuf[:0]
-			}
+		select {
+		case <-ctx.Done():
+			yield(ParseResult{Err: ctx.Err()})
+			return
+		default:
+		}
 
-			depth := 0
-			curField := fieldNone
+		locBuf = locBuf[:0]
+		if flags.lastMod {
+			lastModBuf = lastModBuf[:0]
+		}
+		if flags.changeFreq {
+			changeFreqBuf = changeFreqBuf[:0]
+		}
+		if flags.priority {
+			priorityBuf = priorityBuf[:0]
+		}
 
-		inner:
-			for {
-				t, err := decoder.RawToken()
-				if err != nil {
-					yield(ParseResult{Err: ErrMalformedXML})
-					return
-				}
-				switch tok := t.(type) {
-				case xml.StartElement:
-					depth++
-					if depth == 1 {
-						tag := tok.Name.Local
-						if len(tag) > 3 && tag[0:3] == "sm:" {
-							tag = tag[3:]
-						}
-						if tag == "loc" {
-							curField = fieldLoc
-						} else if flags.lastMod && tag == "lastmod" {
-							curField = fieldLastMod
-						} else if flags.changeFreq && tag == "changefreq" {
-							curField = fieldChangeFreq
-						} else if flags.priority && tag == "priority" {
-							curField = fieldPriority
-						} else {
-							curField = fieldNone
-						}
-					} else {
-						curField = fieldNone
-					}
-				case xml.CharData:
-					if depth == 1 {
-						switch curField {
-						case fieldLoc:
-							locBuf = append(locBuf, tok...)
-						case fieldLastMod:
-							lastModBuf = append(lastModBuf, tok...)
-						case fieldChangeFreq:
-							for _, b := range tok {
-								if b >= 'A' && b <= 'Z' {
-									b += 'a' - 'A'
-								}
-								changeFreqBuf = append(changeFreqBuf, b)
-							}
-						case fieldPriority:
-							priorityBuf = append(priorityBuf, tok...)
-						}
-					}
-				case xml.EndElement:
-					if depth == 0 {
-						break inner
-					}
-					depth--
-					curField = fieldNone
-				}
-			}
+		if !processEntry(lx, flags, selfClose, &locBuf, &lastModBuf, &changeFreqBuf, &priorityBuf) {
+			yield(ParseResult{Err: ErrMalformedXML})
+			return
+		}
 
-			result := ParseResult{Priority: -1}
-			if len(locBuf) > 0 {
-				result.Loc = string(locBuf)
+		result := ParseResult{Priority: -1}
+		if len(locBuf) > 0 {
+			result.Loc = string(locBuf)
+		}
+		if flags.lastMod && len(lastModBuf) > 0 {
+			if t, err := ParseTime(string(lastModBuf)); err == nil {
+				result.LastMod = t
 			}
-			if flags.lastMod && len(lastModBuf) > 0 {
-				if t, err := ParseTime(string(lastModBuf)); err == nil {
-					result.LastMod = t
-				}
+		}
+		if flags.changeFreq && len(changeFreqBuf) > 0 {
+			result.ChangeFreq = ChangeFreq(changeFreqBuf)
+		}
+		if flags.priority && len(priorityBuf) > 0 {
+			if p, err := strconv.ParseFloat(string(priorityBuf), 64); err == nil {
+				result.Priority = p
 			}
-			if flags.changeFreq && len(changeFreqBuf) > 0 {
-				result.ChangeFreq = ChangeFreq(changeFreqBuf)
-			}
-			if flags.priority && len(priorityBuf) > 0 {
-				if p, err := strconv.ParseFloat(string(priorityBuf), 64); err == nil {
-					result.Priority = p
-				}
-			}
+		}
 
-			if !yield(result) {
-				return
-			}
+		if !yield(result) {
+			return
 		}
 	}
 }
