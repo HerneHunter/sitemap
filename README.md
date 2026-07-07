@@ -5,21 +5,26 @@ A fast and memory-efficient XML sitemap parser for Go. It streams sitemaps and s
 ## Features
 
 - **Automatic Recursion**: Transparently handles sitemap indexes by fetching child sitemaps concurrently.
-- **Selective Fields & Filtering**: Optionally extract extra XML fields or filter URLs by their last modified date.
-- **Jalali Date Support**: Automatically detects and parses Jalali dates.
+- **Streaming, Low-Allocation Parsing**: Entries are streamed via channels as they're tokenized, keeping memory and allocations low even on large sitemaps.
+- **Selective Field Extraction**: Parse only the fields you need (`<lastmod>`, `<changefreq>`, `<priority>`) each opt-in via its own option, so you don't pay for parsing you don't use.
+- **Two Filtering Modes**:
+  - Date-based, via `WithModifiedSince` (drops entries older than a cutoff).
+  - Regex-based, via `WithSitemapFilter` / `WithSitemapIndexFilter` (whitelist/blacklist by URI or raw URL).
+- **Jalali Date Support**: Automatically detects and parses Jalali dates, both in `<lastmod>` values and in `WithModifiedSince` cutoffs.
 - **Customizable Requests**: Fully supports custom HTTP clients for proxies, timeouts, and specific configurations.
 
 ## Performance
 
-Results from benchmarking a 60 MB sitemap file (156,520 `<loc>` entries) alongside a few other Go packages:
+Results from benchmarking a sitemap with 50,000 `<loc>` entries (the standard maximum for a single sitemap) alongside a few other Go packages:
 
-| Package | Speed | Mem/Op | Allocs/Op | Peak memory |
+| Package | Time/op | Throughput | Mem/Op | Allocs/Op |
 | :--- | :--- | :--- | :--- | :--- |
-| `github.com/HerneHunter/sitemap` | ~1.68× | 180.4 MB | 6.73M | 13.60 MB |
-| `github.com/oxffaa/gopher-parse-sitemap` | ~1.44× | 377.2 MB | 11.11M | 13.75 MB |
-| `github.com/yuya-matsushima/go-sitemap` | ~1.36× | 406.9 MB | 10.80M | 179.57 MB |
-| `github.com/snabb/sitemap` | ~1.29× | 370.9 MB | 10.96M | 54.69 MB |
-| `github.com/aafeher/go-sitemap-parser` | 1× | 1.11 GB | 16.43M | 410.96 MB |
+| `github.com/HerneHunter/sitemap` (loc only) | 47.65 ms | 1.049M urls/s | 2.52 MB | 50,010 |
+| `github.com/HerneHunter/sitemap` | 78.90 ms | 633.7k urls/s | 4.43 MB | 150,000 |
+| `github.com/oxffaa/gopher-parse-sitemap` | 609.80 ms | 82.00k urls/s | 120.90 MB | 3,600,000 |
+| `github.com/snabb/sitemap` | 615.80 ms | 81.20k urls/s | 117.70 MB | 3,500,000 |
+| `github.com/yuya-matsushima/go-sitemap` | 616.10 ms | 81.16k urls/s | 128.90 MB | 3,450,000 |
+| `github.com/aafeher/go-sitemap-parser` | 894.80 ms | 55.88k urls/s | 346.30 MB | 5,250,000 |
 
 ## Install
 
