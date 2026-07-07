@@ -123,6 +123,24 @@ cutoff := time.Now().AddDate(0, -1, 0) // last 30 days
 sitemap.Fetch(ctx, url, sitemap.WithModifiedSince(cutoff))
 ```
 
+### `WithSitemapFilter(f *sitemap.Filter)`
+
+Applies regex-based filtering to skip specific URLs from parsed sitemaps. The `Filter` struct supports whitelisting and blacklisting against the URI (path + query), or raw string matching against the full URL.
+
+```go
+filter := &sitemap.Filter{
+	Blacklist: []*regexp.Regexp{
+		regexp.MustCompile(`^/admin`),
+		regexp.MustCompile(`\?sort=`),
+	},
+}
+sitemap.Fetch(ctx, url, sitemap.WithSitemapFilter(filter))
+```
+
+### `WithSitemapIndexFilter(f *sitemap.Filter)`
+
+Similar to `WithSitemapFilter`, but applies to URLs within a sitemap index. Sitemaps that are filtered out will not be fetched or parsed.
+
 ### `WithHTTPClient(c *http.Client)`
 
 Overrides the HTTP client used for fetching (`Fetch`, `FetchAll`,

@@ -26,6 +26,8 @@ type options struct {
 	parseLastMod    bool
 	parseChangeFreq bool
 	parsePriority   bool
+	sitemapFilter   *Filter
+	sitemapIndexFilter *Filter
 }
 
 func resolveOptions(opts []Option) options {
@@ -92,6 +94,16 @@ func WithModifiedSince(t time.Time) Option {
 	}
 }
 
+// WithSitemapFilter applies a filter to sitemap entries.
+func WithSitemapFilter(f *Filter) Option {
+	return func(o *options) { o.sitemapFilter = f }
+}
+
+// WithSitemapIndexFilter applies a filter to sitemap index entries.
+func WithSitemapIndexFilter(f *Filter) Option {
+	return func(o *options) { o.sitemapIndexFilter = f }
+}
+
 // Parse parses sitemap/index entries from reader, fetching children concurrently.
 func Parse(ctx context.Context, reader io.Reader, opts ...Option) <-chan ParseResult {
 	o := resolveOptions(opts)
@@ -117,10 +129,9 @@ func ParseFile(ctx context.Context, filepath string, opts ...Option) <-chan Pars
 		close(out)
 		return out
 	}
-	// Ensure the file is closed even if the goroutine inside Parse never
-	// reaches consumeReader (e.g. context already cancelled at call site).
-	// closeIfCloser inside consumeReader handles the normal path; this defer
-	// is a safety net for the abnormal path. Double-close on *os.File is safe.
+	// closeIfCloser inside consumeReader handles the normal path, but we need
+	// this defer as a safety net in case the context is already cancelled and
+	// the goroutine never reaches it. Double-close on *os.File is safe.
 	defer f.Close()
 	return Parse(ctx, f, opts...)
 }
@@ -197,6 +208,8 @@ func consumeReader(ctx context.Context, reader io.Reader, o options, out chan<- 
 		case result.Err != nil:
 			out <- result
 		case !o.since.IsZero() && shouldSkip(result.LastMod, o.since):
+		case isIndex && !o.sitemapIndexFilter.match(result.Loc):
+		case !isIndex && !o.sitemapFilter.match(result.Loc):
 		case isIndex:
 			scheduleFetch(ctx, result.Loc, o, out, wg, sem)
 		default:
