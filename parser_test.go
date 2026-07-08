@@ -48,21 +48,9 @@ func TestParse(t *testing.T) {
 			}
 
 			t.Run(testName, func(t *testing.T) {
-				xmlFile, err := os.Open(tt.xmlFile)
-				if err != nil {
-					t.Fatalf("Failed to open XML file: %v", err)
-				}
-				defer xmlFile.Close()
-
-				expectedURLs, err := readLines(tt.expectedURLs)
-				if err != nil {
-					t.Fatalf("Failed to read expected URLs: %v", err)
-				}
-
-				expectedTimes, err := readLines(tt.expectedTimes)
-				if err != nil {
-					t.Fatalf("Failed to read expected times: %v", err)
-				}
+				xmlFile := mustOpen(t, tt.xmlFile)
+				expectedURLs := mustReadLines(t, tt.expectedURLs)
+				expectedTimes := mustReadLines(t, tt.expectedTimes)
 
 				var resCh <-chan ParseResult
 				if includeTime {
@@ -268,55 +256,11 @@ func TestParseOptions(t *testing.T) {
 
 func TestParse_Entries(t *testing.T) {
 	t.Run("Regular sitemap returns entries", func(t *testing.T) {
-		xmlFile, err := os.Open("testdata/parser/sm-1.xml")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer xmlFile.Close()
-
-		expectedURLs, err := readLines("testdata/parser/sm-1-urls.txt")
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		var count int
-		for result := range Parse(context.TODO(), xmlFile) {
-			if result.Err != nil {
-				t.Errorf("unexpected error: %v", result.Err)
-				continue
-			}
-			count++
-		}
-
-		if count != len(expectedURLs) {
-			t.Errorf("got %d URLs, want %d", count, len(expectedURLs))
-		}
+		assertParsedCount(t, "testdata/parser/sm-1.xml", "testdata/parser/sm-1-urls.txt")
 	})
 
 	t.Run("Regular sitemap 2 returns entries", func(t *testing.T) {
-		xmlFile, err := os.Open("testdata/parser/sm-2.xml")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer xmlFile.Close()
-
-		expectedURLs, err := readLines("testdata/parser/sm-2-urls.txt")
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		var count int
-		for result := range Parse(context.TODO(), xmlFile) {
-			if result.Err != nil {
-				t.Errorf("unexpected error: %v", result.Err)
-				continue
-			}
-			count++
-		}
-
-		if count != len(expectedURLs) {
-			t.Errorf("got %d URLs, want %d", count, len(expectedURLs))
-		}
+		assertParsedCount(t, "testdata/parser/sm-2.xml", "testdata/parser/sm-2-urls.txt")
 	})
 
 	t.Run("Malformed XML", func(t *testing.T) {
@@ -337,11 +281,7 @@ func TestParse_Entries(t *testing.T) {
 	})
 
 	t.Run("WithLastMod populates LastMod", func(t *testing.T) {
-		xmlFile, err := os.Open("testdata/parser/sm-1.xml")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer xmlFile.Close()
+		xmlFile := mustOpen(t, "testdata/parser/sm-1.xml")
 
 		var sawAny bool
 		for result := range Parse(context.TODO(), xmlFile, WithLastMod()) {
@@ -359,11 +299,7 @@ func TestParse_Entries(t *testing.T) {
 	})
 
 	t.Run("without WithLastMod, LastMod stays nil", func(t *testing.T) {
-		xmlFile, err := os.Open("testdata/parser/sm-1.xml")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer xmlFile.Close()
+		xmlFile := mustOpen(t, "testdata/parser/sm-1.xml")
 
 		for result := range Parse(context.TODO(), xmlFile) {
 			if result.Err != nil {
@@ -377,11 +313,7 @@ func TestParse_Entries(t *testing.T) {
 	})
 
 	t.Run("WithModifiedSince implies lastmod parsing even without WithLastMod", func(t *testing.T) {
-		xmlFile, err := os.Open("testdata/parser/sm-1.xml")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer xmlFile.Close()
+		xmlFile := mustOpen(t, "testdata/parser/sm-1.xml")
 
 		var sawAny bool
 		for result := range Parse(context.TODO(), xmlFile, WithModifiedSince(time.Unix(0, 0))) {
@@ -408,30 +340,50 @@ func TestParse_Entries(t *testing.T) {
 
 func TestParse_Index(t *testing.T) {
 	t.Run("Sitemap index returns entries", func(t *testing.T) {
-		xmlFile, err := os.Open("testdata/parser/smi-1.xml")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer xmlFile.Close()
-
-		expectedURLs, err := readLines("testdata/parser/smi-1-urls.txt")
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		var count int
-		for result := range Parse(context.TODO(), xmlFile, WithBufferSize(100)) {
-			if result.Err != nil {
-				t.Errorf("unexpected error: %v", result.Err)
-				continue
-			}
-			count++
-		}
-
-		if count != len(expectedURLs) {
-			t.Errorf("got %d URLs, want %d", count, len(expectedURLs))
-		}
+		assertParsedCount(t, "testdata/parser/smi-1.xml", "testdata/parser/smi-1-urls.txt", WithBufferSize(100))
 	})
+}
+
+// mustOpen opens path or fails the test, closing the file during cleanup.
+func mustOpen(t *testing.T, path string) *os.File {
+	t.Helper()
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("open %s: %v", path, err)
+	}
+	t.Cleanup(func() { f.Close() })
+	return f
+}
+
+// mustReadLines reads path via readLines or fails the test.
+func mustReadLines(t *testing.T, path string) []string {
+	t.Helper()
+	lines, err := readLines(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	return lines
+}
+
+// assertParsedCount parses xmlPath and asserts the number of entries matches
+// the line count of urlsPath.
+func assertParsedCount(t *testing.T, xmlPath, urlsPath string, opts ...Option) {
+	t.Helper()
+	xmlFile := mustOpen(t, xmlPath)
+	expectedURLs := mustReadLines(t, urlsPath)
+
+	var count int
+	for result := range Parse(context.TODO(), xmlFile, opts...) {
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+			continue
+		}
+		count++
+	}
+
+	if count != len(expectedURLs) {
+		t.Errorf("got %d URLs, want %d", count, len(expectedURLs))
+	}
 }
 
 func readLines(filename string) ([]string, error) {

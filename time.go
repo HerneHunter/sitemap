@@ -166,8 +166,7 @@ func parseJalaliTime(s string) (time.Time, error) {
 	}
 
 	// Create Jalali date and convert to Gregorian
-	pt := ptime.Date(year, ptime.Month(month), day, hour, minute, second, 0, iranLocation)
-	return pt.Time(), nil
+	return jalaliToGregorian(year, month, day, hour, minute, second), nil
 }
 
 // normalizeDigits converts Persian and Arabic digits to ASCII digits

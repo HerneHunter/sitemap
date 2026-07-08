@@ -84,11 +84,8 @@ func WithPriority() Option {
 // Jalali time is converted to Gregorian automatically.
 func WithModifiedSince(t time.Time) Option {
 	return func(o *options) {
-		if !t.IsZero() && looksLikeJalali(t.Year()) {
-			t = jalaliToGregorian(t.Year(), int(t.Month()), t.Day(), t.Hour(), t.Minute(), t.Second())
-		}
 		o.parseLastMod = true
-		o.since = t
+		o.since = convertIfJalali(t)
 	}
 }
 

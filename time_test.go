@@ -44,59 +44,58 @@ func assertTime(t *testing.T, desc, expected string, got time.Time) {
 	}
 }
 
-func TestParseTime_ShamsiValid(t *testing.T) {
-	for _, tc := range loadCases(t, "shamsi_valid.json") {
+// runTimeCases loads the cases in filename and runs check as a subtest per case.
+func runTimeCases(t *testing.T, filename string, check func(t *testing.T, tc testCase, got time.Time, err error)) {
+	t.Helper()
+	for _, tc := range loadCases(t, filename) {
 		t.Run(tc.Desc, func(t *testing.T) {
 			got, err := ParseTime(tc.Input)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			assertTime(t, tc.Desc, tc.Expected, got)
+			check(t, tc, got, err)
 		})
 	}
+}
+
+func TestParseTime_ShamsiValid(t *testing.T) {
+	runTimeCases(t, "shamsi_valid.json", func(t *testing.T, tc testCase, got time.Time, err error) {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		assertTime(t, tc.Desc, tc.Expected, got)
+	})
 }
 
 func TestParseTime_ShamsiPersianDigits(t *testing.T) {
-	for _, tc := range loadCases(t, "shamsi_persian_digits.json") {
-		t.Run(tc.Desc, func(t *testing.T) {
-			got, err := ParseTime(tc.Input)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			assertTime(t, tc.Desc, tc.Expected, got)
-		})
-	}
+	runTimeCases(t, "shamsi_persian_digits.json", func(t *testing.T, tc testCase, got time.Time, err error) {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		assertTime(t, tc.Desc, tc.Expected, got)
+	})
 }
 
 func TestParseTime_GregorianValid(t *testing.T) {
-	for _, tc := range loadCases(t, "gregorian_valid.json") {
-		t.Run(tc.Desc, func(t *testing.T) {
-			got, err := ParseTime(tc.Input)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			// Only compare date part for formats that lose time info
-			want, _ := time.Parse(time.RFC3339, tc.Expected)
-			if got.Year() != want.Year() || got.Month() != want.Month() || got.Day() != want.Day() {
-				t.Errorf("[%s] date mismatch: got %s, want %s",
-					tc.Desc, got.Format("2006-01-02"), want.Format("2006-01-02"))
-			}
-		})
-	}
+	runTimeCases(t, "gregorian_valid.json", func(t *testing.T, tc testCase, got time.Time, err error) {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		// Only compare date part for formats that lose time info
+		want, _ := time.Parse(time.RFC3339, tc.Expected)
+		if got.Year() != want.Year() || got.Month() != want.Month() || got.Day() != want.Day() {
+			t.Errorf("[%s] date mismatch: got %s, want %s",
+				tc.Desc, got.Format("2006-01-02"), want.Format("2006-01-02"))
+		}
+	})
 }
 
 func TestParseTime_Invalid(t *testing.T) {
-	for _, tc := range loadCases(t, "invalid.json") {
-		t.Run(tc.Desc, func(t *testing.T) {
-			got, err := ParseTime(tc.Input)
-			if err == nil {
-				t.Errorf("[%s] expected error but got %v", tc.Desc, got)
-			}
-			if !got.IsZero() {
-				t.Errorf("[%s] expected zero result on error, got %v", tc.Desc, got)
-			}
-		})
-	}
+	runTimeCases(t, "invalid.json", func(t *testing.T, tc testCase, got time.Time, err error) {
+		if err == nil {
+			t.Errorf("[%s] expected error but got %v", tc.Desc, got)
+		}
+		if !got.IsZero() {
+			t.Errorf("[%s] expected zero result on error, got %v", tc.Desc, got)
+		}
+	})
 }
 
 func TestParseTime_ErrorContainsRawInput(t *testing.T) {
