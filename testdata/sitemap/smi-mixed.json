@@ -1,7 +1,7 @@
 [
   {
     "Loc": "",
-    "Err": "open testdata/sitemap/does-not-exist.xml: The system cannot find the file specified."
+    "Err": "open testdata/sitemap/does-not-exist.xml"
   },
   {
     "Loc": "testdata/sitemap/sm-1.xml"
