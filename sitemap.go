@@ -19,15 +19,16 @@ const (
 type Option func(*options)
 
 type options struct {
-	bufferSize      int
-	maxConcurrency  int
-	since           time.Time
-	httpClient      *http.Client
-	parseLastMod    bool
-	parseChangeFreq bool
-	parsePriority   bool
-	sitemapFilter   *Filter
+	bufferSize         int
+	maxConcurrency     int
+	since              time.Time
+	httpClient         *http.Client
+	parseLastMod       bool
+	parseChangeFreq    bool
+	parsePriority      bool
+	sitemapFilter      *Filter
 	sitemapIndexFilter *Filter
+	useCustomLexer     bool
 }
 
 func resolveOptions(opts []Option) options {
@@ -65,6 +66,11 @@ func WithMaxConcurrency(n int) Option {
 			o.maxConcurrency = n
 		}
 	}
+}
+
+// WithCustomLexer opts into a faster custom XML lexer instead of the standard library decoder.
+func WithCustomLexer() Option {
+	return func(o *options) { o.useCustomLexer = true }
 }
 
 // WithLastMod parses <lastmod> into Entry.LastMod.
@@ -198,7 +204,7 @@ func consumeReader(ctx context.Context, reader io.Reader, o options, out chan<- 
 	defer closeIfCloser(reader)
 
 	var isIndex bool
-	parse(ctx, reader, o.flags(), &isIndex, func(result ParseResult) bool {
+	parse(ctx, reader, o.flags(), o.useCustomLexer, &isIndex, func(result ParseResult) bool {
 		if err := ctx.Err(); err != nil {
 			out <- ParseResult{Err: err}
 			return false

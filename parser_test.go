@@ -98,151 +98,156 @@ func TestParser(t *testing.T) {
 					t.Errorf("priority = %q, want %q", string(priorityBuf), tc.ExpectedPri)
 				}
 			case "parse", "parse_file":
-				var reader io.Reader
-				if tc.Method == "parse_file" {
-					f, err := os.Open(tc.InputFile)
-					if err != nil {
-						t.Fatalf("Failed to open input file: %v", err)
+				runTest := func(t *testing.T, useCustomLexer bool) {
+					var reader io.Reader
+					if tc.Method == "parse_file" {
+						f, err := os.Open(tc.InputFile)
+						if err != nil {
+							t.Fatalf("Failed to open input file: %v", err)
+						}
+						defer f.Close()
+						reader = f
+					} else {
+						reader = strings.NewReader(tc.Input)
 					}
-					defer f.Close()
-					reader = f
-				} else {
-					reader = strings.NewReader(tc.Input)
-				}
 
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
+					ctx, cancel := context.WithCancel(context.Background())
+					defer cancel()
 
-				if tc.CancelAt != nil && *tc.CancelAt == 0 {
-					cancel()
-				}
-
-				var kindOut bool
-				var indexResults []ParseResult
-
-				yield := func(res ParseResult) bool {
-					indexResults = append(indexResults, res)
-					if tc.CancelAt != nil && len(indexResults) == *tc.CancelAt {
+					if tc.CancelAt != nil && *tc.CancelAt == 0 {
 						cancel()
 					}
-					if tc.YieldStopAt != nil && len(indexResults) == *tc.YieldStopAt {
-						return false
-					}
-					return true
-				}
 
-				parse(ctx, reader, flags, &kindOut, yield)
+					var kindOut bool
+					var indexResults []ParseResult
 
-				if kindOut != tc.ExpectedKindIndex {
-					t.Errorf("kindOut = %v, want %v", kindOut, tc.ExpectedKindIndex)
-				}
-
-				var finalResults []ParseResult
-				if kindOut && tc.Method == "parse_file" {
-					// Recursively parse child sitemaps.
-					for _, res := range indexResults {
-						if res.Err != nil {
-							finalResults = append(finalResults, res)
-							continue
+					yield := func(res ParseResult) bool {
+						indexResults = append(indexResults, res)
+						if tc.CancelAt != nil && len(indexResults) == *tc.CancelAt {
+							cancel()
 						}
-						sf, err := os.Open(res.Loc)
-						if err != nil {
-							finalResults = append(finalResults, ParseResult{Err: err, Priority: -1})
-							continue
+						if tc.YieldStopAt != nil && len(indexResults) == *tc.YieldStopAt {
+							return false
 						}
-						var childKind bool
-						parse(ctx, sf, flags, &childKind, func(cres ParseResult) bool {
-							finalResults = append(finalResults, cres)
-							return true
-						})
-						sf.Close()
+						return true
 					}
-				} else {
-					finalResults = indexResults
-				}
 
-				var expected []expectedRes
-				if tc.Method == "parse_file" {
-					expData, err := os.ReadFile(tc.ExpectedFile)
-					if err != nil {
-						t.Fatalf("Failed to read expected file: %v", err)
+					parse(ctx, reader, flags, useCustomLexer, &kindOut, yield)
+
+					if kindOut != tc.ExpectedKindIndex {
+						t.Errorf("kindOut = %v, want %v", kindOut, tc.ExpectedKindIndex)
 					}
-					if err := json.Unmarshal(expData, &expected); err != nil {
-						t.Fatalf("Failed to parse expected JSON: %v", err)
-					}
-					
-					if tc.ExpectedKindIndex {
-						var expanded []expectedRes
-						for _, exp := range expected {
-							if exp.Err == "" && strings.HasSuffix(exp.Loc, ".xml") {
-								childPath := strings.TrimSuffix(exp.Loc, ".xml") + ".json"
-								childData, err := os.ReadFile(childPath)
-								if err == nil {
-									var childExp []expectedRes
-									if err := json.Unmarshal(childData, &childExp); err != nil {
-										t.Fatalf("Failed to parse expected JSON for child %s: %v", childPath, err)
-									}
-									expanded = append(expanded, childExp...)
-									continue
-								}
+
+					var finalResults []ParseResult
+					if kindOut && tc.Method == "parse_file" {
+						// Recursively parse child sitemaps.
+						for _, res := range indexResults {
+							if res.Err != nil {
+								finalResults = append(finalResults, res)
+								continue
 							}
-							expanded = append(expanded, exp)
+							sf, err := os.Open(res.Loc)
+							if err != nil {
+								finalResults = append(finalResults, ParseResult{Err: err, Priority: -1})
+								continue
+							}
+							var childKind bool
+							parse(ctx, sf, flags, useCustomLexer, &childKind, func(cres ParseResult) bool {
+								finalResults = append(finalResults, cres)
+								return true
+							})
+							sf.Close()
 						}
-						expected = expanded
+					} else {
+						finalResults = indexResults
 					}
-				} else {
-					expected = tc.ExpectedResults
-				}
 
-				if len(finalResults) != len(expected) {
-					t.Fatalf("got %d results, want %d", len(finalResults), len(expected))
-				}
-
-				for i, res := range finalResults {
-					exp := expected[i]
-					if res.Loc != exp.Loc {
-						t.Errorf("Result %d: Loc = %q, want %q", i, res.Loc, exp.Loc)
-					}
-					if exp.LastMod != "" {
-						expTime, err := time.Parse(time.RFC3339, exp.LastMod)
+					var expected []expectedRes
+					if tc.Method == "parse_file" {
+						expData, err := os.ReadFile(tc.ExpectedFile)
 						if err != nil {
-							t.Fatalf("Result %d: Invalid LastMod format in expected JSON %q: %v", i, exp.LastMod, err)
+							t.Fatalf("Failed to read expected file: %v", err)
 						}
-						if !res.LastMod.Equal(expTime) {
-							t.Errorf("Result %d: LastMod = %v, want %v", i, res.LastMod, expTime)
+						if err := json.Unmarshal(expData, &expected); err != nil {
+							t.Fatalf("Failed to parse expected JSON: %v", err)
+						}
+
+						if tc.ExpectedKindIndex {
+							var expanded []expectedRes
+							for _, exp := range expected {
+								if exp.Err == "" && strings.HasSuffix(exp.Loc, ".xml") {
+									childPath := strings.TrimSuffix(exp.Loc, ".xml") + ".json"
+									childData, err := os.ReadFile(childPath)
+									if err == nil {
+										var childExp []expectedRes
+										if err := json.Unmarshal(childData, &childExp); err != nil {
+											t.Fatalf("Failed to parse expected JSON for child %s: %v", childPath, err)
+										}
+										expanded = append(expanded, childExp...)
+										continue
+									}
+								}
+								expanded = append(expanded, exp)
+							}
+							expected = expanded
 						}
 					} else {
-						if !res.LastMod.IsZero() {
-							t.Errorf("Result %d: expected zero LastMod, got %v", i, res.LastMod)
-						}
+						expected = tc.ExpectedResults
 					}
 
-					if string(res.ChangeFreq) != exp.ChangeFreq {
-						t.Errorf("Result %d: ChangeFreq = %q, want %q", i, res.ChangeFreq, exp.ChangeFreq)
+					if len(finalResults) != len(expected) {
+						t.Fatalf("got %d results, want %d", len(finalResults), len(expected))
 					}
 
-					if exp.Priority != nil {
-						if res.Priority != *exp.Priority {
-							t.Errorf("Result %d: Priority = %v, want %v", i, res.Priority, *exp.Priority)
+					for i, res := range finalResults {
+						exp := expected[i]
+						if res.Loc != exp.Loc {
+							t.Errorf("Result %d: Loc = %q, want %q", i, res.Loc, exp.Loc)
 						}
-					} else {
-						if res.Priority != -1 && res.Err == nil {
-							t.Errorf("Result %d: Priority = %v, want -1", i, res.Priority)
+						if exp.LastMod != "" {
+							expTime, err := time.Parse(time.RFC3339, exp.LastMod)
+							if err != nil {
+								t.Fatalf("Result %d: Invalid LastMod format in expected JSON %q: %v", i, exp.LastMod, err)
+							}
+							if !res.LastMod.Equal(expTime) {
+								t.Errorf("Result %d: LastMod = %v, want %v", i, res.LastMod, expTime)
+							}
+						} else {
+							if !res.LastMod.IsZero() {
+								t.Errorf("Result %d: expected zero LastMod, got %v", i, res.LastMod)
+							}
 						}
-					}
 
-					if exp.Err != "" {
-						if res.Err == nil {
-							t.Errorf("Result %d: expected error containing %q, got nil", i, exp.Err)
-						} else if !strings.Contains(res.Err.Error(), exp.Err) {
-							t.Errorf("Result %d: expected error containing %q, got %q", i, exp.Err, res.Err.Error())
+						if string(res.ChangeFreq) != exp.ChangeFreq {
+							t.Errorf("Result %d: ChangeFreq = %q, want %q", i, res.ChangeFreq, exp.ChangeFreq)
 						}
-					} else {
-						if res.Err != nil {
-							t.Errorf("Result %d: expected no error, got %v", i, res.Err)
+
+						if exp.Priority != nil {
+							if res.Priority != *exp.Priority {
+								t.Errorf("Result %d: Priority = %v, want %v", i, res.Priority, *exp.Priority)
+							}
+						} else {
+							if res.Priority != -1 && res.Err == nil {
+								t.Errorf("Result %d: Priority = %v, want -1", i, res.Priority)
+							}
+						}
+
+						if exp.Err != "" {
+							if res.Err == nil {
+								t.Errorf("Result %d: expected error containing %q, got nil", i, exp.Err)
+							} else if !strings.Contains(res.Err.Error(), exp.Err) {
+								t.Errorf("Result %d: expected error containing %q, got %q", i, exp.Err, res.Err.Error())
+							}
+						} else {
+							if res.Err != nil {
+								t.Errorf("Result %d: expected no error, got %v", i, res.Err)
+							}
 						}
 					}
 				}
+
+				t.Run("StdParser", func(t *testing.T) { runTest(t, false) })
+				t.Run("CustomLexer", func(t *testing.T) { runTest(t, true) })
 			}
 		})
 	}
