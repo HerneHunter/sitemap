@@ -42,8 +42,11 @@ func assertTime(t *testing.T, desc, expected string, got time.Time) {
 	}
 }
 
-func TestParseTime_ShamsiValid(t *testing.T) {
-	for _, tc := range loadCases(t, "shamsi_valid.json") {
+// runShamsiCases drives the common Shamsi-parse-and-assert flow shared by
+// the Shamsi-valid and Shamsi-Persian-digits test suites.
+func runShamsiCases(t *testing.T, filename string) {
+	t.Helper()
+	for _, tc := range loadCases(t, filename) {
 		t.Run(tc.Desc, func(t *testing.T) {
 			got, err := ParseTime(tc.Input)
 			if err != nil {
@@ -54,16 +57,12 @@ func TestParseTime_ShamsiValid(t *testing.T) {
 	}
 }
 
+func TestParseTime_ShamsiValid(t *testing.T) {
+	runShamsiCases(t, "shamsi_valid.json")
+}
+
 func TestParseTime_ShamsiPersianDigits(t *testing.T) {
-	for _, tc := range loadCases(t, "shamsi_persian_digits.json") {
-		t.Run(tc.Desc, func(t *testing.T) {
-			got, err := ParseTime(tc.Input)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			assertTime(t, tc.Desc, tc.Expected, got)
-		})
-	}
+	runShamsiCases(t, "shamsi_persian_digits.json")
 }
 
 func TestParseTime_GregorianValid(t *testing.T) {
@@ -156,8 +155,6 @@ func TestIsShamsi(t *testing.T) {
 		}
 	}
 }
-
-
 
 func BenchmarkParseTime_GregorianISO(b *testing.B) {
 	for b.Loop() {

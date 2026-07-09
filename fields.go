@@ -44,16 +44,6 @@ func matchField(local []byte, flags parseFlags) int {
 	return fieldNone
 }
 
-func selectDst(field int, locBuf, lastModBuf, changeFreqBuf, priorityBuf *[]byte) (*[]byte, int) {
-	switch field {
-	case fieldLoc:
-		return locBuf, capUnescape
-	case fieldLastMod:
-		return lastModBuf, capRaw
-	case fieldChangeFreq:
-		return changeFreqBuf, capLower
-	case fieldPriority:
-		return priorityBuf, capRaw
-	}
-	return nil, capNone
-}
+// selectDst has been folded into (*entryBuffers).dst in buffers.go so the
+// destination buffer and capture mode are resolved against the buffer holder
+// rather than four loose pointers.

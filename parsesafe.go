@@ -4,28 +4,17 @@ import (
 	"context"
 	"encoding/xml"
 	"io"
-	"strconv"
 )
-
 
 func parseSafe(ctx context.Context, reader io.Reader, flags parseFlags, kindOut *bool, yield func(ParseResult) bool) {
 	decoder := xml.NewDecoder(reader)
 	detected := false
 	var isIndex bool
 
-	// Pre-allocate buffers. xml.Decoder can split text across multiple CharData tokens,
-	// so we have to accumulate it manually.
-	locBuf := make([]byte, 0, 2048)
-	var lastModBuf, changeFreqBuf, priorityBuf []byte
-	if flags.lastMod {
-		lastModBuf = make([]byte, 0, 128)
-	}
-	if flags.changeFreq {
-		changeFreqBuf = make([]byte, 0, 32)
-	}
-	if flags.priority {
-		priorityBuf = make([]byte, 0, 16)
-	}
+	// Pre-allocate buffers via the shared helper so allocation/reset/drain
+	// logic is no longer duplicated with parsefast.go. xml.Decoder can split
+	// text across multiple CharData tokens, so we accumulate manually.
+	b := newEntryBuffers(flags)
 
 	for {
 		token, err := decoder.RawToken()
@@ -68,16 +57,7 @@ func parseSafe(ctx context.Context, reader io.Reader, flags parseFlags, kindOut 
 			default:
 			}
 
-			locBuf = locBuf[:0]
-			if flags.lastMod {
-				lastModBuf = lastModBuf[:0]
-			}
-			if flags.changeFreq {
-				changeFreqBuf = changeFreqBuf[:0]
-			}
-			if flags.priority {
-				priorityBuf = priorityBuf[:0]
-			}
+			b.reset()
 
 			depth := 0
 			curField := fieldNone
@@ -97,17 +77,7 @@ func parseSafe(ctx context.Context, reader io.Reader, flags parseFlags, kindOut 
 						if len(tag) > 3 && tag[0:3] == "sm:" {
 							tag = tag[3:]
 						}
-						if tag == "loc" {
-							curField = fieldLoc
-						} else if flags.lastMod && tag == "lastmod" {
-							curField = fieldLastMod
-						} else if flags.changeFreq && tag == "changefreq" {
-							curField = fieldChangeFreq
-						} else if flags.priority && tag == "priority" {
-							curField = fieldPriority
-						} else {
-							curField = fieldNone
-						}
+						curField = matchField([]byte(tag), flags)
 					} else {
 						curField = fieldNone
 					}
@@ -115,19 +85,19 @@ func parseSafe(ctx context.Context, reader io.Reader, flags parseFlags, kindOut 
 					if depth == 1 {
 						switch curField {
 						case fieldLoc:
-							locBuf = append(locBuf, tok...)
+							b.locBuf = append(b.locBuf, tok...)
 						case fieldLastMod:
-							lastModBuf = append(lastModBuf, tok...)
+							b.lastModBuf = append(b.lastModBuf, tok...)
 						case fieldChangeFreq:
 							// ASCII lowercase on the fly to save an allocation later
-							for _, b := range tok {
-								if b >= 'A' && b <= 'Z' {
-									b += 'a' - 'A'
+							for _, byt := range tok {
+								if byt >= 'A' && byt <= 'Z' {
+									byt += 'a' - 'A'
 								}
-								changeFreqBuf = append(changeFreqBuf, b)
+								b.changeFreqBuf = append(b.changeFreqBuf, byt)
 							}
 						case fieldPriority:
-							priorityBuf = append(priorityBuf, tok...)
+							b.priorityBuf = append(b.priorityBuf, tok...)
 						}
 					}
 				case xml.EndElement:
@@ -139,23 +109,7 @@ func parseSafe(ctx context.Context, reader io.Reader, flags parseFlags, kindOut 
 				}
 			}
 
-			result := ParseResult{Priority: -1}
-			if len(locBuf) > 0 {
-				result.Loc = string(locBuf)
-			}
-			if flags.lastMod && len(lastModBuf) > 0 {
-				if t, err := ParseTime(string(lastModBuf)); err == nil {
-					result.LastMod = t
-				}
-			}
-			if flags.changeFreq && len(changeFreqBuf) > 0 {
-				result.ChangeFreq = ChangeFreq(changeFreqBuf)
-			}
-			if flags.priority && len(priorityBuf) > 0 {
-				if p, err := strconv.ParseFloat(string(priorityBuf), 64); err == nil {
-					result.Priority = p
-				}
-			}
+			result := b.buildResult()
 
 			if !yield(result) {
 				return

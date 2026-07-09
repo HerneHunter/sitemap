@@ -60,6 +60,72 @@ func parseFlagsFromList(flags []string) parseFlags {
 	return pf
 }
 
+// checkEntryBuffers compares the accumulated entry field buffers against the
+// expected strings, reporting any mismatch with the field name.
+func checkEntryBuffers(t *testing.T, b *entryBuffers, wantLoc, wantMod, wantFreq, wantPri string) {
+	t.Helper()
+	if got, want := string(b.locBuf), wantLoc; got != want {
+		t.Errorf("loc = %q, want %q", got, want)
+	}
+	if got, want := string(b.lastModBuf), wantMod; got != want {
+		t.Errorf("lastMod = %q, want %q", got, want)
+	}
+	if got, want := string(b.changeFreqBuf), wantFreq; got != want {
+		t.Errorf("changeFreq = %q, want %q", got, want)
+	}
+	if got, want := string(b.priorityBuf), wantPri; got != want {
+		t.Errorf("priority = %q, want %q", got, want)
+	}
+}
+
+// checkResult compares a single ParseResult against an expectedRes, covering
+// Loc, LastMod, ChangeFreq, Priority and the optional error substring.
+func checkResult(t *testing.T, i int, res ParseResult, exp expectedRes) {
+	t.Helper()
+	if res.Loc != exp.Loc {
+		t.Errorf("Result %d: Loc = %q, want %q", i, res.Loc, exp.Loc)
+	}
+	if exp.LastMod != "" {
+		expTime, err := time.Parse(time.RFC3339, exp.LastMod)
+		if err != nil {
+			t.Fatalf("Result %d: Invalid LastMod format in expected JSON %q: %v", i, exp.LastMod, err)
+		}
+		if !res.LastMod.Equal(expTime) {
+			t.Errorf("Result %d: LastMod = %v, want %v", i, res.LastMod, expTime)
+		}
+	} else {
+		if !res.LastMod.IsZero() {
+			t.Errorf("Result %d: expected zero LastMod, got %v", i, res.LastMod)
+		}
+	}
+
+	if string(res.ChangeFreq) != exp.ChangeFreq {
+		t.Errorf("Result %d: ChangeFreq = %q, want %q", i, res.ChangeFreq, exp.ChangeFreq)
+	}
+
+	if exp.Priority != nil {
+		if res.Priority != *exp.Priority {
+			t.Errorf("Result %d: Priority = %v, want %v", i, res.Priority, *exp.Priority)
+		}
+	} else {
+		if res.Priority != -1 && res.Err == nil {
+			t.Errorf("Result %d: Priority = %v, want -1", i, res.Priority)
+		}
+	}
+
+	if exp.Err != "" {
+		if res.Err == nil {
+			t.Errorf("Result %d: expected error containing %q, got nil", i, exp.Err)
+		} else if !strings.Contains(res.Err.Error(), exp.Err) {
+			t.Errorf("Result %d: expected error containing %q, got %q", i, exp.Err, res.Err.Error())
+		}
+	} else {
+		if res.Err != nil {
+			t.Errorf("Result %d: expected no error, got %v", i, res.Err)
+		}
+	}
+}
+
 func TestParser(t *testing.T) {
 	data, err := os.ReadFile("testdata/parser_tests.json")
 	if err != nil {
@@ -79,24 +145,13 @@ func TestParser(t *testing.T) {
 			switch tc.Method {
 			case "processEntry":
 				lx := newXMLLexer(strings.NewReader(tc.Input))
-				var locBuf, lastModBuf, changeFreqBuf, priorityBuf []byte
-				ok := processEntry(lx, flags, tc.SelfClose, &locBuf, &lastModBuf, &changeFreqBuf, &priorityBuf)
+				b := newEntryBuffers(flags)
+				ok := processEntry(lx, &b, tc.SelfClose)
 
 				if ok != tc.ExpectedOK {
 					t.Errorf("ok = %v, want %v", ok, tc.ExpectedOK)
 				}
-				if string(locBuf) != tc.ExpectedLoc {
-					t.Errorf("loc = %q, want %q", string(locBuf), tc.ExpectedLoc)
-				}
-				if string(lastModBuf) != tc.ExpectedMod {
-					t.Errorf("lastMod = %q, want %q", string(lastModBuf), tc.ExpectedMod)
-				}
-				if string(changeFreqBuf) != tc.ExpectedFreq {
-					t.Errorf("changeFreq = %q, want %q", string(changeFreqBuf), tc.ExpectedFreq)
-				}
-				if string(priorityBuf) != tc.ExpectedPri {
-					t.Errorf("priority = %q, want %q", string(priorityBuf), tc.ExpectedPri)
-				}
+				checkEntryBuffers(t, &b, tc.ExpectedLoc, tc.ExpectedMod, tc.ExpectedFreq, tc.ExpectedPri)
 			case "parse", "parse_file":
 				runTest := func(t *testing.T, useCustomLexer bool) {
 					var reader io.Reader
@@ -200,49 +255,7 @@ func TestParser(t *testing.T) {
 					}
 
 					for i, res := range finalResults {
-						exp := expected[i]
-						if res.Loc != exp.Loc {
-							t.Errorf("Result %d: Loc = %q, want %q", i, res.Loc, exp.Loc)
-						}
-						if exp.LastMod != "" {
-							expTime, err := time.Parse(time.RFC3339, exp.LastMod)
-							if err != nil {
-								t.Fatalf("Result %d: Invalid LastMod format in expected JSON %q: %v", i, exp.LastMod, err)
-							}
-							if !res.LastMod.Equal(expTime) {
-								t.Errorf("Result %d: LastMod = %v, want %v", i, res.LastMod, expTime)
-							}
-						} else {
-							if !res.LastMod.IsZero() {
-								t.Errorf("Result %d: expected zero LastMod, got %v", i, res.LastMod)
-							}
-						}
-
-						if string(res.ChangeFreq) != exp.ChangeFreq {
-							t.Errorf("Result %d: ChangeFreq = %q, want %q", i, res.ChangeFreq, exp.ChangeFreq)
-						}
-
-						if exp.Priority != nil {
-							if res.Priority != *exp.Priority {
-								t.Errorf("Result %d: Priority = %v, want %v", i, res.Priority, *exp.Priority)
-							}
-						} else {
-							if res.Priority != -1 && res.Err == nil {
-								t.Errorf("Result %d: Priority = %v, want -1", i, res.Priority)
-							}
-						}
-
-						if exp.Err != "" {
-							if res.Err == nil {
-								t.Errorf("Result %d: expected error containing %q, got nil", i, exp.Err)
-							} else if !strings.Contains(res.Err.Error(), exp.Err) {
-								t.Errorf("Result %d: expected error containing %q, got %q", i, exp.Err, res.Err.Error())
-							}
-						} else {
-							if res.Err != nil {
-								t.Errorf("Result %d: expected no error, got %v", i, res.Err)
-							}
-						}
+						checkResult(t, i, res, expected[i])
 					}
 				}
 
