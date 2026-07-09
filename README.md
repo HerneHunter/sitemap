@@ -1,5 +1,11 @@
 # sitemap
 
+<p align="center">
+  <a href="https://pkg.go.dev/github.com/HerneHunter/sitemap"><img src="https://pkg.go.dev/badge/github.com/HerneHunter/sitemap.svg" alt="Go Reference"></a>
+  <a href="https://github.com/HerneHunter/sitemap/actions/workflows/go-ci.yml"><img src="https://github.com/HerneHunter/sitemap/actions/workflows/go-ci.yml/badge.svg" alt="Build Status"></a>
+  <a href="https://codecov.io/gh/HerneHunter/sitemap"><img src="https://codecov.io/gh/HerneHunter/sitemap/graph/badge.svg" alt="codecov"></a>
+</p>
+
 A fast, memory-efficient XML sitemap parser for Go. It tokenizes sitemaps and sitemap indexes incrementally, reusing buffers across entries, and streams results via channels without loading entire documents into memory.
 
 ## Features
