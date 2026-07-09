@@ -25,6 +25,7 @@ var (
 	sitemapData []byte
 )
 
+// generateSitemap builds the payload at runtime rather than committing a large XML fixture.
 func generateSitemap(n int) []byte {
 	var buf bytes.Buffer
 	buf.Grow(n * 230)
@@ -48,8 +49,7 @@ func generateSitemap(n int) []byte {
 
 	freqs := [2]string{"weekly", "monthly"}
 	for i := 1; i < n; i++ {
-		// Vary the data slightly to prevent parsers from over-optimizing
-		// on identical repeated strings.
+		// Vary fields so parsers can't shortcut on identical repeated content.
 		freq := freqs[i%2]
 		priority := 0.8
 		if i%3 == 0 {
@@ -76,8 +76,7 @@ func generateSitemap(n int) []byte {
 func loadData(tb testing.TB) []byte {
 	tb.Helper()
 	sitemapOnce.Do(func() {
-		// Generate the payload once globally to avoid inflating individual benchmark times
-		// with setup overhead.
+		// Generated once and shared so setup cost doesn't leak into the measured iterations.
 		sitemapData = generateSitemap(numURLs)
 		fmt.Fprintf(os.Stderr, "generated sitemap: %d bytes (%.1f MB), %d urls\n",
 			len(sitemapData), float64(len(sitemapData))/1024/1024, numURLs)
@@ -88,7 +87,7 @@ func loadData(tb testing.TB) []byte {
 func collectHerneHunter(t *testing.T, data []byte) []string {
 	ctx := context.Background()
 	reader := bytes.NewReader(data)
-	resCh := hernehunter.Parse(ctx, reader)
+	resCh := hernehunter.Parse(ctx, reader, hernehunter.WithCustomLexer())
 	var got []string
 	for r := range resCh {
 		if r.Err != nil {
@@ -151,10 +150,10 @@ func collectAafeher(t *testing.T, data []byte) []string {
 	return got
 }
 
-// Ensure all parsers actually agree on the output before we benchmark them,
-// otherwise we might be comparing a broken fast parser against a correct slow one.
-// We compare full content (not just count), since two parsers could extract
-// the same number of URLs while disagreeing on the actual values.
+// Sanity check: all parsers must agree on the extracted URLs before we trust
+// the timings. Otherwise a fast but broken parser looks great next to a correct
+// but slow one. We compare full content, not just the count, because two parsers
+// can return the same number of URLs and still disagree on the values.
 func TestAllLibrariesProduceSameLocs(t *testing.T) {
 	data := loadData(t)
 
@@ -171,8 +170,8 @@ func TestAllLibrariesProduceSameLocs(t *testing.T) {
 		{"Aafeher", collectAafeher(t, data)},
 	}
 
-	// Order of extraction may differ between parsers, so sort before comparing.
-	// We only care whether the sets of URLs match, not the order.
+	// Extraction order isn't guaranteed to match across libraries, so sort first.
+	// We only care that the URL sets agree, not the order they came in.
 	for i := range results {
 		sort.Strings(results[i].locs)
 	}
@@ -202,6 +201,49 @@ func TestAllLibrariesProduceSameLocs(t *testing.T) {
 	}
 }
 
+func BenchmarkHerneHunterCustomLexer(b *testing.B) {
+	data := loadData(b)
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+
+	reader := bytes.NewReader(data)
+	ctx := context.Background()
+	b.ResetTimer()
+
+	for b.Loop() {
+		reader.Reset(data)
+		resCh := hernehunter.Parse(ctx, reader,
+			hernehunter.WithChangeFreq(),
+			hernehunter.WithLastMod(),
+			hernehunter.WithPriority(),
+			hernehunter.WithCustomLexer(),
+		)
+		for range resCh {
+		}
+	}
+
+	b.ReportMetric(float64(b.N)*float64(numURLs)/b.Elapsed().Seconds(), "urls/s")
+}
+
+func BenchmarkHerneHunterCustomLexerLocOnly(b *testing.B) {
+	data := loadData(b)
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+
+	reader := bytes.NewReader(data)
+	ctx := context.Background()
+	b.ResetTimer()
+
+	for b.Loop() {
+		reader.Reset(data)
+		resCh := hernehunter.Parse(ctx, reader, hernehunter.WithCustomLexer())
+		for range resCh {
+		}
+	}
+
+	b.ReportMetric(float64(b.N)*float64(numURLs)/b.Elapsed().Seconds(), "urls/s")
+}
+
 func BenchmarkHerneHunter(b *testing.B) {
 	data := loadData(b)
 	b.SetBytes(int64(len(data)))
@@ -225,9 +267,8 @@ func BenchmarkHerneHunter(b *testing.B) {
 	b.ReportMetric(float64(b.N)*float64(numURLs)/b.Elapsed().Seconds(), "urls/s")
 }
 
-// Same as BenchmarkHerneHunter but without the With* options enabled, so we
-// only extract Loc. Useful to isolate the overhead of parsing the extra
-// optional fields (changefreq/lastmod/priority) versus the bare minimum.
+// Like BenchmarkHerneHunter but with no With* options, so only Loc gets parsed.
+// Lets us isolate the cost of the optional fields against the bare minimum.
 func BenchmarkHerneHunterLocOnly(b *testing.B) {
 	data := loadData(b)
 	b.SetBytes(int64(len(data)))
