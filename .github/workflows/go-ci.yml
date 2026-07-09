@@ -1,0 +1,35 @@
+name: Go CI Pipeline
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-and-build:
+    name: Test, and Build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Golang Environment
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+
+      - name: Execute Unit Tests
+        run: go test -coverprofile=coverage.txt -v ./...
+
+      - name: Compile Project
+        run: go build -v ./...
+
+      - name: Send Coverage Report to Codecov
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
